@@ -1,6 +1,6 @@
 {
   "name": "gulp-babel-helpers",
-  "version": "1.0.0",
+  "version": "1.1.2",
   "description": "transpiles via babel and collects external helpers into a seperate module",
   "main": "index.js",
   "scripts": {
@@ -17,12 +17,13 @@
   },
   "homepage": "https://github.com/jquense/gulp-babel-helpers",
   "dependencies": {
-    "babel": "^4.7.3",
+    "babel-core": "^4.7.3",
+    "mkdirp": "^0.5.0",
     "through2": "^0.6.3",
+    "gulp-util": "^3.0.4",
     "vinyl-sourcemaps-apply": "^0.1.4"
   },
   "devDependencies": {
-    "gulp-util": "^3.0.4",
     "mocha": "^2.2.0",
     "rimraf": "^2.3.1",
     "should": "^5.1.0"

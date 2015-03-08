@@ -11,7 +11,14 @@ var CODE = 'let hi = () => 5;';
 describe('gulp babel helpers', function(){
 
   afterEach(function(done){
-    rimraf('./helpers.js', done)
+    var i = 0;
+
+    rimraf('./helpers.js', finish)
+    rimraf('./nope', finish)
+
+    function finish(){
+      if (++i === 2) done()
+    }
   });
 
   it('should pass the file on if null', function(done){
@@ -36,7 +43,7 @@ describe('gulp babel helpers', function(){
       isStream: function () { return true; }
     };
     stream.once('error', function (err) {
-      err.message.should.equal('babel: Streaming not supported');
+      err.message.should.equal('Streaming not supported');
       done();
     });
     stream.write(streamFile);
@@ -95,16 +102,32 @@ describe('gulp babel helpers', function(){
     stream.end();
   });
 
+
+  it('should create helpers in dir that does not exist', function (done) {
+    var stream = plugin({ 
+      experimental: true 
+    }, "./dir/helpers.js", "./nope/helpers.js");
+
+    var streamFile = createFile('var { hi, ...rest } = { hi: 5, a: 3, b: 4 };');
+
+    stream.once('finish', function () {
+      var helpers = require('./nope/helpers')
+      done();
+    });
+
+    stream.write(streamFile);
+    stream.end();
+  });
+
 })
 
 
 function createFile(contents){
-  var base = join(__dirname, 'dir');
-  var path = join(__dirname, 'somefile.jsx');
+  var path = join(__dirname, './dir/somefile.jsx');
 
   return new gutil.File({
     cwd: __dirname,
-    base: base,
+    base: __dirname,
     path: path,
     contents: new Buffer(contents)
   })

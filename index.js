@@ -1,12 +1,16 @@
 'use strict';
-var babel   = require("babel")
+var babel   = require("babel-core")
+  , gutil = require('gulp-util')
   , through = require('through2')
+  , mkdirp  = require('mkdirp')
   , applySourceMap = require('vinyl-sourcemaps-apply')
   , path = require('path')
   , fs = require('fs');
 
 module.exports = babelTransform
 
+// for the bits that aren't mine:
+// https://github.com/babel/gulp-babel/blob/master/license
 function babelTransform(opts, helperPath, dest){
 
   var helpers = [];
@@ -17,7 +21,8 @@ function babelTransform(opts, helperPath, dest){
     var res;
 
     if (file.isNull())   return cb(null, file)
-    if (file.isStream()) return cb(new Error('babel: Streaming not supported'))
+    if (file.isStream()) return cb(
+      new gutil.PluginError('gulp-babel-helpers', 'Streaming not supported'))
 
     try {
       opts.filename = file.path
@@ -42,7 +47,10 @@ function babelTransform(opts, helperPath, dest){
 
       this.push(file);
     } 
-    catch (err) { this.emit('error', err); }
+    catch (err) {
+      this.emit('error'
+        , new gutil.PluginError('gulp-babel-helpers', err, { fileName: file.path }));
+   }
 
     cb();
   }
@@ -53,21 +61,34 @@ function babelTransform(opts, helperPath, dest){
 
     var str = babel.buildExternalHelpers(helpers, 'umd');
 
-    fs.writeFileSync(dest, str) //async didn't work...
-
-    cb()
+    try {
+      fs.writeFileSync(dest, str) //async didn't work...
+    }
+    catch (err) {
+      if (err.code == 'ENOENT') {
+        mkdirp.sync(path.dirname(dest));
+        fs.writeFileSync(dest, str)
+      }
+      else throw err
+    }
+    finally {
+      cb()
+    }
   });
 }
 
 function insertHelperRequire(file, code, dest){
-  var requirePath = path.relative(file.base, path.join(__dirname, dest))
+  var requirePath = path.relative(
+        path.dirname(file.path), 
+        path.join(file.base, dest)
+      )
     , lines = code.split(/\r\n|\r|\n/g)
     , idx = lines[0].indexOf('use strict') !== -1 ? 1 : 0;
 
   if ( requirePath[0] !== path.sep && requirePath[0] !== '.')
     requirePath = '.' + path.sep + requirePath
 
-  lines.splice(idx, 0, 'var babelHelpers = require("' + requirePath.replace('\\', '/') + '");')
+  lines.splice(idx, 0, 'var babelHelpers = require("' + requirePath.replace(/\\/g, '/') + '");')
 
   return lines.join('\n');
 }
