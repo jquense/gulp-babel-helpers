@@ -13,13 +13,16 @@ module.exports = babelTransform
 // https://github.com/babel/gulp-babel/blob/master/license
 function babelTransform(opts, helperPath, dest){
 
-  var helpers = [];
+  var helpers = [],
+    helperOpts,
+    outputType;
 
   opts = opts || {};
   
-  if(opts.babelHelpers === undefined) {
-    opts.babelHelpers = {};
-  }
+  helperOpts = opts.babelHelpers || {};
+  delete opts.babelHelpers;
+  
+  outputType = helperOpts.outputType || 'umd';
 
   return through.obj(function transpile(file, enc, cb) {
     var res;
@@ -44,8 +47,8 @@ function babelTransform(opts, helperPath, dest){
         helpers.push(helper)
       })
 
-      if ( res.usedHelpers.length )
-        res.code = insertHelperRequire(file, res.code, helperPath)
+      if ( res.usedHelpers.length && outputType === 'umd')
+        res.code = insertHelperRequire(file, res.code, helperPath, outputType)
 
       file.contents = new Buffer(res.code)
 
@@ -63,7 +66,7 @@ function babelTransform(opts, helperPath, dest){
     if ( !helpers.length ) 
       return cb()
 
-    var str = babel.buildExternalHelpers(helpers, opts.babelHelpers.outputType || 'umd');
+    var str = babel.buildExternalHelpers(helpers, outputType);
 
     try {
       fs.writeFileSync(dest, str) //async didn't work...
