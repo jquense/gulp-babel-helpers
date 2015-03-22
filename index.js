@@ -16,6 +16,10 @@ function babelTransform(opts, helperPath, dest){
   var helpers = [];
 
   opts = opts || {};
+  
+  if(opts.babelHelpers === undefined) {
+    opts.babelHelpers = {};
+  }
 
   return through.obj(function transpile(file, enc, cb) {
     var res;
@@ -59,7 +63,7 @@ function babelTransform(opts, helperPath, dest){
     if ( !helpers.length ) 
       return cb()
 
-    var str = babel.buildExternalHelpers(helpers, 'umd');
+    var str = babel.buildExternalHelpers(helpers, opts.babelHelpers.outputType || 'umd');
 
     try {
       fs.writeFileSync(dest, str) //async didn't work...
