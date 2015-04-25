@@ -2,9 +2,11 @@
 var babel   = require("babel-core")
   , gutil = require('gulp-util')
   , through = require('through2')
-  , mkdirp  = require('mkdirp')
   , applySourceMap = require('vinyl-sourcemaps-apply')
   , path = require('path')
+  , assign = require('xtend')
+  , Transformer = babel.Transformer
+  , t = babel.types
   , fs = require('fs');
 
 module.exports = babelTransform
@@ -12,90 +14,111 @@ module.exports = babelTransform
 // for the bits that aren't mine:
 // https://github.com/babel/gulp-babel/blob/master/license
 function babelTransform(opts, helperPath, dest){
+  var helpers = []
+    , helperOpts
+    , outputType
+    , base, cwd;
 
-  var helpers = [],
-    helperOpts,
-    outputType;
+  opts = assign(opts || {})
+  
+  helperOpts = opts.babelHelpers || {}
 
-  opts = opts || {};
+  delete opts.babelHelpers
   
-  helperOpts = opts.babelHelpers || {};
-  delete opts.babelHelpers;
-  
-  outputType = helperOpts.outputType || 'umd';
+  outputType = helperOpts.outputType || 'umd'
 
   return through.obj(function transpile(file, enc, cb) {
     var res;
 
-    if (file.isNull())   return cb(null, file)
-    if (file.isStream()) return cb(
-      new gutil.PluginError('gulp-babel-helpers', 'Streaming not supported'))
+    if (file.isNull())   return cb(null, file);
+    if (file.isStream()) return cb(new gutil.PluginError('gulp-babel-helpers', 'Streaming not supported'))
+
+
+    !base && (base = file.base)
+    !cwd  && (cwd = file.cwd)
 
     try {
-      opts.filename = file.path
       opts.filename = file.relative
       opts.sourceMap = !!file.sourceMap
       opts.externalHelpers = true
-      opts.returnUsedHelpers = true
+      opts.metadataUsedHelpers = true
+      opts.plugins = (opts.plugins ? opts.plugins : []).concat({ 
+        transformer: getHelperPlugin(file, helperPath, outputType), 
+        position: 'after' 
+      })
 
       res = babel.transform(file.contents.toString(), opts);
 
       if (file.sourceMap && res.map) 
         applySourceMap(file, res.map);
       
-      res.usedHelpers.forEach(function(helper){
+      res.metadata.usedHelpers.forEach(function(helper){
         helpers.push(helper)
       })
 
-      if ( res.usedHelpers.length && outputType === 'umd')
-        res.code = insertHelperRequire(file, res.code, helperPath, outputType)
-
-      file.contents = new Buffer(res.code)
-
-      this.push(file);
+      file.contents = new Buffer(res.code)      
     } 
     catch (err) {
-      this.emit('error'
-        , new gutil.PluginError('gulp-babel-helpers', err, { fileName: file.path }));
-   }
+      return cb(new gutil.PluginError('gulp-babel-helpers', err, { fileName: file.path }) );
+    }
 
-    cb();
+    cb(null, file)
   }
   , function onEnd(cb){
-
     if ( !helpers.length ) 
       return cb()
 
-    var str = babel.buildExternalHelpers(helpers, outputType);
+    var str = babel.buildExternalHelpers(helpers, outputType)
 
-    try {
-      fs.writeFileSync(dest, str) //async didn't work...
-    }
-    catch (err) {
-      if (err.code == 'ENOENT') {
-        mkdirp.sync(path.dirname(dest));
-        fs.writeFileSync(dest, str)
-      }
-      else throw err
-    }
-    finally {
-      cb()
-    }
+    this.push(new gutil.File({
+      path: helperPath,
+      contents: new Buffer(str)
+    }))
+
+    cb()
   });
 }
 
-function insertHelperRequire(file, code, dest){
+function getHelperPlugin(file, dest, outputType){
   var requirePath = path.relative(
         path.dirname(file.path), 
         path.join(file.base, dest)
-      )
-    , lines = code.split(/\r\n|\r|\n/g)
-    , idx = lines[0].indexOf('use strict') !== -1 ? 1 : 0;
+      );
 
   if ( requirePath[0] !== path.sep && requirePath[0] !== '.')
     requirePath = '.' + path.sep + requirePath
 
-  lines.splice(idx, 0, 'var babelHelpers = require("' + requirePath.replace(/\\/g, '/') + '");')
+  requirePath = requirePath.replace(/\\/g, '/')
 
-  return lines.join('\n');
+  return new Transformer('insert-helper-require', {
+    Program: function(node, parent, scope, file) {
+      var modulePath = file.resolveModuleSource(requirePath)
+        , name = 'babelHelpers'
+        , id = file.dynamicImportIds[name] = t.identifier(name);
+
+      var hasHelper = Object.keys(file.usedHelpers || {}).some(function(key){
+        return file.usedHelpers[key]
+      })
+
+      if ( !hasHelper) 
+        return node
+
+      var first = node.body[0]
+        , declar = t.variableDeclaration("var", [
+          t.variableDeclarator(id, 
+            t.callExpression(
+              t.identifier("require"), [ t.literal(modulePath) ]
+            )
+          )
+        ])
+
+      if (t.isExpressionStatement(first) && t.isLiteral(first.expression, { value: "use strict" })) {
+        node.body.splice(1, 0, declar)
+      }
+      else
+        node.body.unshift(declar)
+
+      return node
+    }
+  })
 }
