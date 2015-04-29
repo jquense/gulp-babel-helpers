@@ -1,6 +1,6 @@
 {
   "name": "gulp-babel-helpers",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "transpiles via babel and collects external helpers into a seperate module",
   "main": "index.js",
   "scripts": {

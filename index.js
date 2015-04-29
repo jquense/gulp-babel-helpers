@@ -47,7 +47,7 @@ function babelTransform(opts, helperPath){
       opts.sourceMap = !!file.sourceMap
       opts.externalHelpers = true
       opts.metadataUsedHelpers = true
-      console.log(opts.plugins, plugins)
+
       opts.plugins = plugins.concat({ 
         transformer: getHelperPlugin(file, helperPath, outputType), 
         position: 'after' 
