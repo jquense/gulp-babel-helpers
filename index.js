@@ -13,14 +13,19 @@ module.exports = babelTransform
 
 // for the bits that aren't mine:
 // https://github.com/babel/gulp-babel/blob/master/license
-function babelTransform(opts, helperPath, dest){
+function babelTransform(opts, helperPath){
   var helpers = []
     , helperOpts
     , outputType
-    , base, cwd;
+    , plugins, base, cwd;
+
+  if (typeof opts === 'string')
+    helperPath = opts, opts = {}
 
   opts = assign(opts || {})
   
+  plugins = (opts.plugins || []).slice()
+
   helperOpts = opts.babelHelpers || {}
 
   delete opts.babelHelpers
@@ -42,7 +47,8 @@ function babelTransform(opts, helperPath, dest){
       opts.sourceMap = !!file.sourceMap
       opts.externalHelpers = true
       opts.metadataUsedHelpers = true
-      opts.plugins = (opts.plugins ? opts.plugins : []).concat({ 
+      console.log(opts.plugins, plugins)
+      opts.plugins = plugins.concat({ 
         transformer: getHelperPlugin(file, helperPath, outputType), 
         position: 'after' 
       })

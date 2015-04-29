@@ -110,9 +110,25 @@ describe('gulp babel helpers', function(){
     stream.end();
   });
 
+  it.only('should work with multiple files', function (done) {
+    var stream = plugin({ 
+       stage: 0
+    }, "./dir/helpers.js");
+
+    var streamFile = createFile('\n\nvar { hi} = { hi: 5, a: 3, b: 4 };');
+
+    stream.once('finish', function () {
+      done();
+    });
+
+    stream.write(streamFile);
+    stream.write(streamFile);
+    stream.end();
+  });
+
   it('should add helpers to stream', function (done) {
     var stream = plugin({ 
-      stage: 0 
+      stage: 0
     }, "./dir/helpers.js");
 
     var streamFile = createFile('var { hi, ...rest } = { hi: 5, a: 3, b: 4 };')
