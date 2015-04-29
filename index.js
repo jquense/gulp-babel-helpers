@@ -68,7 +68,8 @@ function babelTransform(opts, helperPath){
       return cb(new gutil.PluginError('gulp-babel-helpers', err, { fileName: file.path }) );
     }
 
-    cb(null, file)
+    this.push(file)
+    cb()
   }
   , function onEnd(cb){
     if ( !helpers.length ) 

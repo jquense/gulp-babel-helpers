@@ -110,7 +110,7 @@ describe('gulp babel helpers', function(){
     stream.end();
   });
 
-  it.only('should work with multiple files', function (done) {
+  it('should work with multiple files', function (done) {
     var stream = plugin({ 
        stage: 0
     }, "./dir/helpers.js");
