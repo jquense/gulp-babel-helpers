@@ -10,35 +10,6 @@ var CODE = 'let hi = () => 5;';
 
 describe('gulp babel helpers', function(){
 
-  it('should pass the file on if null', function(done){
-   var stream = plugin();
-    var emptyFile = {
-      isNull: function () { return true; }
-    };
-    
-    stream.once('data', function (data) {
-      data.should.equal(emptyFile);
-      done();
-    });
-    stream.write(emptyFile);
-    stream.end();
-  });
-
-
-  it('should emit error when file isStream()', function (done) {
-    var stream = plugin();
-    var streamFile = {
-      isNull: function () { return false; },
-      isStream: function () { return true; }
-    };
-    stream.once('error', function (err) {
-      err.message.should.equal('Streaming not supported');
-      done();
-    });
-    stream.write(streamFile);
-    stream.end();
-  });
-
   it('should transform file', function (done) {
     var stream = plugin({ stage: 0}, "./dir/helpers.js");
     var streamFile = createFile('let hi = 5;');
@@ -54,8 +25,8 @@ describe('gulp babel helpers', function(){
 
 
   it('should inject helper module', function (done) {
-    var stream = plugin({ 
-       stage: 0 
+    var stream = plugin({
+       stage: 0
     }, "./dir/helpers.js");
 
     var streamFile = createFile('var { hi, ...rest } = { hi: 5, a: 3, b: 4 };');
@@ -73,8 +44,8 @@ describe('gulp babel helpers', function(){
   });
 
   it('should inject below use strict', function (done) {
-    var stream = plugin({ 
-       stage: 0 
+    var stream = plugin({
+       stage: 0
     }, "./dir/helpers.js");
 
     var streamFile = createFile('//hey\n "use strict";\n\nvar { hi, ...rest } = { hi: 5, a: 3, b: 4 };');
@@ -92,8 +63,8 @@ describe('gulp babel helpers', function(){
   });
 
   it('should not inject when helpers aren\'t used', function (done) {
-    var stream = plugin({ 
-       stage: 0 
+    var stream = plugin({
+       stage: 0
     }, "./dir/helpers.js");
 
     var streamFile = createFile('\n\nvar { hi} = { hi: 5, a: 3, b: 4 };');
@@ -111,7 +82,7 @@ describe('gulp babel helpers', function(){
   });
 
   it('should work with multiple files', function (done) {
-    var stream = plugin({ 
+    var stream = plugin({
        stage: 0
     }, "./dir/helpers.js");
 
@@ -127,7 +98,7 @@ describe('gulp babel helpers', function(){
   });
 
   it('should add helpers to stream', function (done) {
-    var stream = plugin({ 
+    var stream = plugin({
       stage: 0
     }, "./dir/helpers.js");
 
