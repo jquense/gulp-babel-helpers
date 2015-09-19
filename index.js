@@ -1,6 +1,7 @@
 'use strict';
 var babel   = require("babel-core")
   , gulpBabel = require('gulp-babel')
+  , plugin = require('babel-plugin-external-helpers')
   , gutil = require('gulp-util')
   , through = require('through2')
   , applySourceMap = require('vinyl-sourcemaps-apply')
@@ -8,9 +9,9 @@ var babel   = require("babel-core")
   , assign = require('xtend')
   , fs = require('fs');
 
+
 module.exports = gulpBabelHelpers
 module.exports.plugin = plugin
-
 
 function gulpBabelHelpers(opts, helperPath) {
   var helpers = []
@@ -32,8 +33,15 @@ function gulpBabelHelpers(opts, helperPath) {
 
     opts.externalHelpers = true
 
+    opts.extra = assign(opts.extra, {
+      externalHelperPlugin: {
+        path: helperPath,
+        base: file.base
+      }
+    })
+
     opts.plugins = plugins.concat(
-      plugin(helperPath))
+      getPlugin())
 
     var stream = gulpBabel(opts)
 
@@ -47,7 +55,6 @@ function gulpBabelHelpers(opts, helperPath) {
       }
       cb()
     })
-
     stream.write(file)
   }, onEnd)
 
@@ -64,62 +71,9 @@ function gulpBabelHelpers(opts, helperPath) {
   }
 }
 
-function plugin(helperPath) {
-
+function getPlugin() {
   return {
     position: 'after',
     transformer: plugin
   }
-
-  function plugin(babel) {
-    var Plugin = babel.Plugin || babel.Transformer
-      , t = babel.types;
-
-    return new Plugin('insert-helper-require', {
-      visitor: {
-
-        Program: function(node, parent, scope, file) {
-          var filepath = path.normalize(file.opts.filename)
-            , cwd = filepath.substr(0, filepath.indexOf(path.normalize(file.opts.filenameRelative)))
-            , importPath = getPath(filepath, cwd, helperPath)
-
-          var modulePath = file.resolveModuleSource(importPath)
-            , name = 'babelHelpers'
-            , id = file.dynamicImportIds[name] = t.identifier(name);
-
-          if (!Object.keys(file.usedHelpers || {}).length)
-            return node
-
-          var first = node.body[0]
-            , declar = t.variableDeclaration("var", [
-              t.variableDeclarator(id,
-                t.callExpression(
-                  t.identifier("require"), [ t.literal(modulePath) ]
-                )
-              )
-            ])
-
-          if (t.isExpressionStatement(first) && t.isLiteral(first.expression, { value: "use strict" }))
-            node.body.splice(1, 0, declar)
-          else
-            node.body.unshift(declar)
-
-          return node
-        }
-      }
-    })
-  }
 }
-
-function getPath(filePath, pathBase, dest) {
-  var requirePath = path.relative(
-        path.dirname(filePath),
-        path.join(pathBase, dest)
-      );
-
-  if (requirePath[0] !== path.sep && requirePath[0] !== '.')
-    requirePath = '.' + path.sep + requirePath
-
-  return requirePath.replace(/\\/g, '/')
-}
-
