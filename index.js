@@ -4,8 +4,6 @@ var babel   = require("babel-core")
   , plugin = require('babel-plugin-external-helpers')
   , gutil = require('gulp-util')
   , through = require('through2')
-  , applySourceMap = require('vinyl-sourcemaps-apply')
-  , path = require('path')
   , assign = require('xtend')
   , fs = require('fs');
 
